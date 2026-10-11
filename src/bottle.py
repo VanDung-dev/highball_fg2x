@@ -12,8 +12,8 @@ from src.gptk30 import ngx
 NGX_CACHE = Path(__file__).resolve().parents[1] / "work/downloads/gptk30"
 
 
-def patch_ngx(bottle, cache=NGX_CACHE):
-    engine.require_closed()
+def ngx_target(bottle):
+    """Validate a bottle and its NGX paths before any engine or DLL changes."""
     bottle = bottle.resolve()
     config = json.loads((bottle / "bottle.json").read_text())
     engine_id = config.get("engineID") if isinstance(config, dict) else None
@@ -26,9 +26,17 @@ def patch_ngx(bottle, cache=NGX_CACHE):
     for path in [target, backup]:
         if path.is_symlink() or not path.resolve().is_relative_to(bottle):
             raise ValueError("NGX target/backup must be regular files inside the bottle.")
+    if not target.is_file():
+        raise ValueError("Bottle NGX DLL is missing: " + str(target))
+    return target
+
+
+def patch_ngx(bottle, cache=NGX_CACHE):
+    engine.require_closed()
+    target = ngx_target(bottle)
+    backup = target.with_name(target.name + ".before-ngx-test")
     original = target.read_bytes()
     if engine.digest(original) == ngx.DLL_SHA:
-        print("Bottle NGX DLL is already correct:", target)
         return target
     downloaded = ngx.fetch_ngx(cache).read_bytes()
     if engine.digest(downloaded) != ngx.DLL_SHA:
@@ -50,6 +58,4 @@ def patch_ngx(bottle, cache=NGX_CACHE):
             if backup.is_symlink() or not backup.is_file():
                 raise ValueError("Existing NGX backup is not a regular file; stopped.")
         replacement.replace(target)
-    print("Installed downloaded GPTK 3.0 NGX DLL:", target)
-    print("Original backup preserved:", backup)
     return target
