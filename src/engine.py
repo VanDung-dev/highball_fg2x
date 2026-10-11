@@ -71,8 +71,9 @@ def build(source, destination):
             raise RuntimeError("Source changed during copying; stopped.")
         module.write_bytes(modified)
         subprocess.run(["/usr/bin/codesign", "--force", "--sign", "-", "--timestamp=none",
-                        "--identifier", profile.IDENTIFIER, str(module)], check=True)
-        subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(module)], check=True)
+                        "--identifier", profile.IDENTIFIER, str(module)], check=True, capture_output=True, text=True)
+        subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(module)],
+                       check=True, capture_output=True, text=True)
         signed = module.read_bytes()
         if signed[profile.OFFSET:profile.OFFSET + len(profile.AFTER)] != profile.AFTER:
             raise RuntimeError("Signed module no longer contains the expected patch.")
@@ -94,9 +95,6 @@ def build(source, destination):
         if destination.exists() or destination.is_symlink():
             raise RuntimeError("Destination appeared during build; stopped.")
         staged.rename(destination)
-    print("Created engine:", destination)
-    print("Patched module SHA256:", marker["patched_sha256"])
-    print("Original engine, bottle configuration and game directories were not edited.")
     return destination
 
 
