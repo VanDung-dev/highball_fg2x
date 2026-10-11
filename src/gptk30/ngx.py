@@ -69,7 +69,7 @@ def fetch_ngx(cache):
     with tempfile.TemporaryDirectory(prefix=".ngx-download-", dir=cache) as temp:
         staged = Path(temp)
         if not archive.exists():
-            print("Downloading GPTK 3.0 runtime:", ARCHIVE_URL, flush=True)
+            print("Downloading GPTK 3.0 runtime...", flush=True)
             request = Request(ARCHIVE_URL, headers={"User-Agent": "highball_fg2x"})
             # Verified HTTPS with a socket timeout; SHA256 is checked before cache publication.
             with urlopen(request, timeout=30) as response, (staged / archive.name).open("wb") as output:
