@@ -158,6 +158,7 @@ class NGXTests(unittest.TestCase):
             with self.subTest(command=command), mock.object(cli.sys, "argv", ["main.py", command, "--bottle", str(bottle)]), \
                     mock.object(fg, "patch_ngx") as patcher, mock.object(engine, "require_closed"), \
                     mock.object(engine, "verify_engine"), mock.object(cli, "select_engine", return_value=Path("source")), \
+                    mock.object(cli, "resolve_bottle", return_value=bottle), \
                     mock.object(engine, "build"):
                 cli.main()
                 self.assertEqual(patcher.call_args.args[0], bottle)

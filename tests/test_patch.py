@@ -119,23 +119,24 @@ class PatchTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "directory is missing"):
                     cli.select_engine()
                 engines.mkdir()
-                with self.assertRaisesRegex(RuntimeError, "No installed"):
-                    cli.select_engine()
+                with mock.object(cli.sys.stdin, "isatty", return_value=True), mock("builtins.input", return_value="0"):
+                    self.assertIsNone(cli.select_engine())
                 prompt.assert_not_called()
 
     def test_selection_validates_binaries_before_prompting(self):
         with tempfile.TemporaryDirectory() as directory:
             engines = Path(directory) / "engines"
             source = self.source_fixture(engines)
-            with mock.object(fg, "ENGINES", engines), mock("builtins.input") as prompt:
-                with self.assertRaisesRegex(RuntimeError, "No compatible"):
+            with mock.object(fg, "ENGINES", engines), mock.object(cli.sys.stdin, "isatty", return_value=True), \
+                    mock("builtins.input", return_value="1") as prompt:
+                with self.assertRaisesRegex(ValueError, "unsupported"):
                     cli.select_engine()
-                prompt.assert_not_called()
+                prompt.assert_called_once()
             with mock.object(fg, "ENGINES", engines), mock.object(fg.profile, "SOURCE_SHA", fg.digest(self.fixture())), \
                     mock.object(cli.sys.stdin, "isatty", return_value=True), mock("builtins.input", return_value="1"):
                 self.assertEqual(cli.select_engine(), source)
 
-    def test_selection_rejects_invalid_cancelled_and_unsupported_choices(self):
+    def test_selection_skips_zero_and_rejects_invalid_and_unsupported_choices(self):
         with tempfile.TemporaryDirectory() as directory:
             engines = Path(directory) / "engines"
             source = self.source_fixture(engines)
@@ -144,7 +145,9 @@ class PatchTests(unittest.TestCase):
             before = (source / fg.MODULE).read_bytes()
             with mock.object(fg, "ENGINES", engines), mock.object(fg.profile, "SOURCE_SHA", fg.digest(before)), \
                     mock.object(cli.sys.stdin, "isatty", return_value=True):
-                for answer, error in [("0", RuntimeError), ("abc", ValueError), ("3", ValueError), ("2", ValueError)]:
+                with mock("builtins.input", return_value="0"):
+                    self.assertIsNone(cli.select_engine())
+                for answer, error in [("abc", ValueError), ("3", ValueError), ("2", ValueError)]:
                     with self.subTest(answer=answer), mock("builtins.input", return_value=answer), self.assertRaises(error):
                         cli.select_engine()
             self.assertEqual((source / fg.MODULE).read_bytes(), before)
