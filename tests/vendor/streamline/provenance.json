@@ -1,0 +1,43 @@
+{
+  "upstream": "https://github.com/NVIDIA-RTX/Streamline",
+  "tag": "v2.7.32",
+  "license": "MIT (included in every header)",
+  "files": {
+    "sl_device_wrappers.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_device_wrappers.h",
+      "sha256": "55f71095da4da57659752506d120dfb9ccaa360e313cbce6086a6ac4c1475967"
+    },
+    "sl.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl.h",
+      "sha256": "e1e81a7428d15b30db37587e9469bd68a56d630d820a4accec0aee3b17e157dd"
+    },
+    "sl_appidentity.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_appidentity.h",
+      "sha256": "388d5c18c213e85e87dcc057fb8223b02dee9572675ed55337a4afe9b8d93531"
+    },
+    "sl_result.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_result.h",
+      "sha256": "cfd0a3bad8886a10e311d3f93a52b18e55b721b020a059b00fb0584a4e843c11"
+    },
+    "sl_struct.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_struct.h",
+      "sha256": "fa28dacbb8bc0574d6dd2403ec8b01b2d811facd7884251f3834b6e9dbf4d73f"
+    },
+    "sl_core_api.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_core_api.h",
+      "sha256": "e46c6642cb91275c0a37764d662f04a86dedb322864d96eadb5adaaa66ecc5f2"
+    },
+    "sl_core_types.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_core_types.h",
+      "sha256": "e3cf9eca2e861399c012a5311c4182f6a7d62a417765b96cc68c871e7881a01a"
+    },
+    "sl_consts.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_consts.h",
+      "sha256": "69a9f35aeecd7fbf68a997872ba2e29f27af7da4675f76b94628393d14474abf"
+    },
+    "sl_version.h": {
+      "url": "https://raw.githubusercontent.com/NVIDIA-RTX/Streamline/v2.7.32/include/sl_version.h",
+      "sha256": "d7965205b22c9dd9628717f734096a82cd9fe36837edc284d7d902f272a368a4"
+    }
+  }
+}
