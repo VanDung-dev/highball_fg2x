@@ -1,5 +1,6 @@
 """Build/install a separate, hash-pinned Highball GPTK 3.0 engine with HAGS compatibility."""
 import argparse
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -8,6 +9,18 @@ import tarfile
 from src import bottle, engine
 from src.gptk import detect_gptk_version
 from src.gptk30 import ngx
+
+
+def default_destination(source, parent):
+    """Derive <source>-fg2x-gptk30 under parent; fall back to the r21 default."""
+    try:
+        manifest = json.loads((Path(source) / "manifest.json").read_text())
+        manifest_id = manifest.get("id") if isinstance(manifest, dict) else None
+        if engine.is_supported_source(manifest_id):
+            return Path(parent) / engine.engine_id_for(manifest_id)
+    except (OSError, ValueError):
+        pass
+    return Path(parent) / engine.ENGINE_ID
 
 
 def select_engine():
@@ -107,7 +120,8 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     builder = commands.add_parser("build", help="Build a copy inside this project; no Highball changes")
     builder.add_argument("--source-engine", type=Path, help="Explicit source engine path; skips interactive selection (CI)")
-    builder.add_argument("--output", type=Path, default=Path(__file__).resolve().parents[1] / "dist" / engine.ENGINE_ID)
+    builder.add_argument("--output", type=Path, default=None,
+                         help="Defaults to <repo>/dist/<source>-fg2x-gptk30")
     installer = commands.add_parser("install", help="Create a separate installed engine; choose it in Highball afterward")
     installer.add_argument("--source-engine", type=Path, help="Explicit source engine path; skips interactive selection")
     installer.add_argument("--bottle", help="Bottle name or path; prompts in an interactive terminal if omitted")
@@ -117,17 +131,20 @@ def main():
     ngx_patcher.add_argument("--bottle", help="Bottle name or path; prompts if omitted")
     ngx_patcher.add_argument("--cache-dir", type=Path, default=bottle.NGX_CACHE)
     remover = commands.add_parser("remove", help="Remove the FG2X engine after all bottles switch back")
-    remover.add_argument("--engine-id", choices=[engine.ENGINE_ID, engine.LEGACY_ENGINE_ID], default=engine.ENGINE_ID,
-                         help="Engine to remove; use the legacy ID for a patch installed before the GPTK suffix")
+    remover.add_argument("--engine-id", default=engine.ENGINE_ID,
+                         help="Engine to remove, e.g. x64-sikarugir10.0_6-r26-fg2x-gptk30; "
+                              "use the -fg2x legacy ID for a patch installed before the GPTK suffix")
     args = parser.parse_args()
+    repo_dist = Path(__file__).resolve().parents[1] / "dist"
     if args.command == "build":
         source = args.source_engine if args.source_engine is not None else select_engine()
         if source is None:
             print("\nBuild skipped. No files changed.")
             return
+        output = args.output if args.output is not None else default_destination(source, repo_dist)
         print("\nBuilding FG2X engine...", flush=True)
-        engine.build(source, args.output)
-        show_result("Build complete", args.output, "built")
+        engine.build(source, output)
+        show_result("Build complete", output, "built")
     elif args.command == "download-ngx":
         print("Verified NGX DLL:", ngx.fetch_ngx(args.cache_dir))
     elif args.command == "patch-ngx":
@@ -139,9 +156,9 @@ def main():
         bottle.patch_ngx(selected, args.cache_dir)
         show_result("Bottle patch complete", bottle_path=selected)
     elif args.command == "install":
-        destination = engine.ENGINES / engine.ENGINE_ID
         engine.require_closed()
         source = args.source_engine if args.source_engine is not None else select_engine()
+        destination = default_destination(source, engine.ENGINES) if source is not None else None
         if source is None:
             print("\nEngine step skipped.")
             status = "skipped"

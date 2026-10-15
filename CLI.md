@@ -27,9 +27,9 @@ Replace `Games` with your bottle's directory name, or omit `--bottle` to choose 
 
 | Component | Current value |
 | --- | --- |
-| Supported source engine | `x64-sikarugir10.0_6-r21`, GPTK/D3DMetal 3.0, with the pinned binary SHA256 |
-| New engine ID | `x64-sikarugir10.0_6-r21-fg2x-gptk30` |
-| Accepted engine ID without the GPTK suffix | `x64-sikarugir10.0_6-r21-fg2x` |
+| Supported source engine | `x64-sikarugir10.0_6-r21` and newer `x64-sikarugir10.0_6-r<N>` revisions (e.g. `r26`), GPTK/D3DMetal 3.0, with the pinned `win32u.so` SHA256 |
+| New engine ID | `<source>-fg2x-gptk30` (e.g. `x64-sikarugir10.0_6-r26-fg2x-gptk30`; `r21` builds keep the documented default) |
+| Accepted engine ID without the GPTK suffix | `<source>-fg2x` (legacy installs) |
 | Highball engines directory | `$HOME/Library/Application Support/Highball/engines/` |
 | Highball bottles directory | `$HOME/Library/Application Support/Highball/bottles/` |
 | Default NGX cache | `<repo>/work/downloads/gptk30/` |
@@ -102,7 +102,7 @@ Enter `0` at source selection to skip the build. No files are written and the co
 
 The build leaves the source engine intact. With the default output, it creates a local copy without installing into Highball, handling NGX or switching bottles. It does not check for running applications as `install` does, so keep the source stable and prevent Highball from updating it during copying.
 
-Choose an output path that does not exist, with the final directory name `x64-sikarugir10.0_6-r21-fg2x-gptk30`. The script rejects a path inside the source engine, an output symlink or a different final name. To build again, choose a new parent directory; there is no `--force` option.
+Choose an output path that does not exist, with the final directory name `<source>-fg2x-gptk30` matching the selected source (e.g. `x64-sikarugir10.0_6-r26-fg2x-gptk30`). The script rejects a path inside the source engine, an output symlink, a non-FG2X final name or a name derived from a different source revision. To build again, choose a new parent directory; there is no `--force` option. When `--output` is omitted, the default is `<repo>/dist/<source>-fg2x-gptk30`.
 
 ## 2. `install`: install the engine and optionally patch a bottle
 
@@ -259,7 +259,7 @@ python3 main.py remove [--engine-id ID]
 | --- | --- | --- |
 | `--engine-id ID` | No | `x64-sikarugir10.0_6-r21-fg2x-gptk30` |
 
-Only the two IDs listed under paths and requirements are accepted: the `-fg2x-gptk30` engine and the `-fg2x` engine without the GPTK suffix. Arbitrary paths and the original engine ID are not accepted.
+Only FG2X engine IDs of the form `x64-sikarugir10.0_6-r<N>-fg2x-gptk30` (or the `-fg2x` legacy form without the GPTK suffix) are accepted. Arbitrary paths and original engine IDs are not accepted.
 
 ### Steps and examples
 

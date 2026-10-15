@@ -1,6 +1,7 @@
 """Validate, build, install safeguards and remove the dedicated Highball FG2X engine."""
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -10,10 +11,44 @@ from src.gptk import detect_gptk_version
 from src.gptk30 import fg2x as profile
 
 SOURCE_ID = profile.SOURCE_ID
-LEGACY_ENGINE_ID = SOURCE_ID + "-fg2x"
-ENGINE_ID = LEGACY_ENGINE_ID + "-gptk30"
+# Newer Highball revisions (r22, r24, r26, ...) keep the same Wine 10.0 rev-6
+# win32u.so bytes; accept any of them when the hash/patch checks below pass.
+SOURCE_RE = re.compile(r"^x64-sikarugir10\.0_6-r\d+$")
+ENGINE_RE = re.compile(r"^x64-sikarugir10\.0_6-r\d+-fg2x(?:-gptk30)?$")
+LEGACY_SUFFIX = "-fg2x"
+ENGINE_SUFFIX = "-fg2x-gptk30"
+LEGACY_ENGINE_ID = SOURCE_ID + LEGACY_SUFFIX
+ENGINE_ID = SOURCE_ID + ENGINE_SUFFIX
 ENGINES = Path.home() / "Library/Application Support/Highball/engines"
 MODULE = Path("engine/lib/wine/x86_64-unix/win32u.so")
+
+
+def is_supported_source(engine_id):
+    return isinstance(engine_id, str) and SOURCE_RE.fullmatch(engine_id) is not None
+
+
+def is_fg2x_engine(engine_id):
+    return isinstance(engine_id, str) and ENGINE_RE.fullmatch(engine_id) is not None
+
+
+def is_legacy_engine(engine_id):
+    return is_fg2x_engine(engine_id) and not engine_id.endswith("-gptk30")
+
+
+def engine_id_for(source_id):
+    return source_id + ENGINE_SUFFIX
+
+
+def legacy_engine_id_for(source_id):
+    return source_id + LEGACY_SUFFIX
+
+
+def source_id_for_engine(engine_id):
+    if not is_fg2x_engine(engine_id):
+        return None
+    if engine_id.endswith(ENGINE_SUFFIX):
+        return engine_id[: -len(ENGINE_SUFFIX)]
+    return engine_id[: -len(LEGACY_SUFFIX)]
 
 
 def digest(data):
@@ -43,27 +78,32 @@ def source_data(source):
     if version != "3.0":
         raise ValueError("GPTK " + version + " detected; only GPTK 3.0 is implemented (gptk40 is a placeholder).")
     manifest = json.loads((source / "manifest.json").read_text())
-    if (not isinstance(manifest, dict) or manifest.get("id") != SOURCE_ID
+    manifest_id = manifest.get("id") if isinstance(manifest, dict) else None
+    if (not isinstance(manifest, dict) or not is_supported_source(manifest_id)
             or (source / "manifest.json").is_symlink()
             or (source / MODULE).is_symlink()
             or not (source / MODULE).resolve().is_relative_to(source)):
-        raise ValueError("Expected the original Highball engine, with a regular win32u.so.")
+        raise ValueError("Expected an original x64-sikarugir10.0_6-r<N> Highball engine, with a regular win32u.so.")
     original = (source / MODULE).read_bytes()
     return manifest, original, profile.patch(original)
 
 
 def build(source, destination):
     source, destination = source.resolve(), destination.absolute()
-    if destination.name != ENGINE_ID:
-        raise ValueError("Destination directory must be named " + ENGINE_ID)
+    if not is_fg2x_engine(destination.name):
+        raise ValueError("Destination directory must look like <source>-fg2x-gptk30, e.g. " + ENGINE_ID)
     if destination.exists() or destination.is_symlink():
         raise ValueError("Destination already exists; it will not be overwritten.")
     if destination.resolve().is_relative_to(source):
         raise ValueError("Output cannot be inside the original engine.")
     manifest, original, modified = source_data(source)
+    source_id = manifest.get("id")
+    if destination.name not in (engine_id_for(source_id), legacy_engine_id_for(source_id)):
+        raise ValueError("Destination " + destination.name + " does not match source "
+                         + str(source_id) + "; expected " + engine_id_for(source_id))
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".fg2x-build-", dir=destination.parent) as temp:
-        staged = Path(temp) / ENGINE_ID
+        staged = Path(temp) / destination.name
         copy_engine(source, staged)
         module = staged / MODULE
         if (not module.resolve().is_relative_to(staged.resolve())
@@ -79,14 +119,14 @@ def build(source, destination):
             raise RuntimeError("Signed module no longer contains the expected patch.")
         if (source / MODULE).read_bytes() != original:
             raise RuntimeError("Original engine changed during build; stopped.")
-        manifest["id"] = ENGINE_ID
-        manifest["displayName"] = manifest.get("displayName", SOURCE_ID) + " + FG2X GPTK 3.0 (experimental)"
+        manifest["id"] = destination.name
+        manifest["displayName"] = manifest.get("displayName", source_id) + " + FG2X GPTK 3.0 (experimental)"
         manifest.setdefault("notes", []).append(
             "Local FG2X v1: hash-pinned HAGS capability response in Wine win32u; "
             "for D3DMetal/MetalFX FG 2X evaluation. Original engine remains installed."
         )
         (staged / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
-        marker = {"format": 1, "engine_id": ENGINE_ID, "source_engine": SOURCE_ID, "gptk_version": "3.0",
+        marker = {"format": 1, "engine_id": destination.name, "source_engine": source_id, "gptk_version": "3.0",
                   "source_sha256": profile.SOURCE_SHA, "patched_sha256": digest(signed),
                   "module": MODULE.as_posix(), "offset": profile.OFFSET,
                   "before": profile.BEFORE.hex(), "after": profile.AFTER.hex()}
@@ -99,7 +139,7 @@ def build(source, destination):
 
 
 def verify_engine(root):
-    if (root.is_symlink() or root.name not in (ENGINE_ID, LEGACY_ENGINE_ID)
+    if (root.is_symlink() or not is_fg2x_engine(root.name)
             or (root / "manifest.json").is_symlink() or (root / "fgx2.json").is_symlink()
             or (root / MODULE).is_symlink()
             or not (root / MODULE).resolve().is_relative_to(root.resolve())):
@@ -107,10 +147,21 @@ def verify_engine(root):
     record = json.loads((root / "fgx2.json").read_text())
     manifest = json.loads((root / "manifest.json").read_text())
     data = (root / MODULE).read_bytes()
+    source_id = record.get("source_engine") if isinstance(record, dict) else None
+    if not is_supported_source(source_id):
+        # Test fixtures and very old installs may lack source_engine; derive it
+        # from the directory name instead of rejecting a valid engine.
+        if source_id is not None:
+            raise ValueError("FG2X engine differs from its installation record; stopped.")
+        source_id = source_id_for_engine(root.name)
+        if not is_supported_source(source_id):
+            raise ValueError("FG2X engine differs from its installation record; stopped.")
+    legacy_default = "3.0" if root.name == legacy_engine_id_for(source_id) else None
     if (not isinstance(record, dict) or not isinstance(manifest, dict)
             or record.get("format") != 1 or record.get("engine_id") != root.name
+            or root.name not in (engine_id_for(source_id), legacy_engine_id_for(source_id))
             or record.get("source_sha256") != profile.SOURCE_SHA or manifest.get("id") != root.name
-            or record.get("gptk_version", "3.0" if root.name == LEGACY_ENGINE_ID else None) != "3.0"
+            or record.get("gptk_version", legacy_default) != "3.0"
             or digest(data) != record.get("patched_sha256")
             or data[profile.OFFSET:profile.OFFSET + len(profile.AFTER)] != profile.AFTER):
         raise ValueError("FG2X engine differs from its installation record; stopped.")
@@ -122,13 +173,14 @@ def verify_engine(root):
 
 def remove(engine_id=ENGINE_ID):
     require_closed()
-    if engine_id not in (ENGINE_ID, LEGACY_ENGINE_ID):
-        raise ValueError("Unknown FG2X engine ID; stopped.")
+    if not is_fg2x_engine(engine_id):
+        raise ValueError("Unknown FG2X engine ID; expected like " + ENGINE_ID + ".")
     root = ENGINES / engine_id
     verify_engine(root)
+    source_id = source_id_for_engine(engine_id)
     bottles = ENGINES.parent / "bottles"
     for config in bottles.glob("*/bottle.json"):
         if json.loads(config.read_text()).get("engineID") == engine_id:
-            raise RuntimeError("Switch bottle " + config.parent.name + " back to " + SOURCE_ID + " first.")
+            raise RuntimeError("Switch bottle " + config.parent.name + " back to " + str(source_id) + " first.")
     shutil.rmtree(root)
     print("Removed only the FG2X engine. Original engine and bottle settings are unchanged.")

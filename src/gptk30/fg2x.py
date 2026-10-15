@@ -2,6 +2,8 @@
 import hashlib
 import struct
 
+# Default source revision. Newer x64-sikarugir10.0_6-r<N> revisions are accepted
+# by src/engine.py when their win32u.so still matches SOURCE_SHA below.
 SOURCE_ID = "x64-sikarugir10.0_6-r21"
 SOURCE_SHA = "dc40c864f9442c9299df2b75d40e78a9550cb7fbdab64dc0ff06941efcec64b9"
 OFFSET = 0xd2c0

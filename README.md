@@ -6,11 +6,11 @@ This is an experimental patch. It does not replace the original Highball engine,
 
 ## Quick setup
 
-You need macOS, Python 3.9+ and the original Highball engine `x64-sikarugir10.0_6-r21` with GPTK/D3DMetal 3.0. You can run the installer without pip packages or a separate build step. GPTK 4.0 is not supported yet.
+You need macOS, Python 3.9+ and an original Highball engine `x64-sikarugir10.0_6-r21` or newer (e.g. `x64-sikarugir10.0_6-r26`) with GPTK/D3DMetal 3.0 and the pinned `win32u.so` bytes. You can run the installer without pip packages or a separate build step. GPTK 4.0 is not supported yet.
 
 ### 1. Prepare your bottle
 
-In Highball, select your bottle, set its engine to `x64-sikarugir10.0_6-r21`, choose D3DMetal and enable DLSS/MetalFX. Then quit the game, Steam, Highball and all Wine applications.
+In Highball, select your bottle, set its engine to your original revision (e.g. `x64-sikarugir10.0_6-r26`; `r21` also works), choose D3DMetal and enable DLSS/MetalFX. Then quit the game, Steam, Highball and all Wine applications.
 
 ### 2. Patch the engine and bottle
 
@@ -20,7 +20,7 @@ Open Terminal in the repository directory containing `main.py` and run:
 python3 main.py install
 ```
 
-First, choose the original r21 engine marked `GPTK 3.0; compatible`. The installer creates the patched engine, or checks and reuses it if it already exists. It asks you to choose a source on every interactive run.
+First, choose the original engine marked `GPTK 3.0; compatible` (any `x64-sikarugir10.0_6-r<N>` revision with matching bytes). The installer creates the patched engine named after that source (e.g. `x64-sikarugir10.0_6-r26-fg2x-gptk30`), or checks and reuses it if it already exists. It asks you to choose a source on every interactive run.
 
 Enter `0` to skip the engine step and continue to bottle selection. This skips both building and verification.
 
@@ -50,10 +50,10 @@ The summary shows a checked, existing engine as `verified` and includes the back
 
 If you skipped the engine step, the installer only handled NGX. Select an existing FG2X engine or rerun the installer and choose a source to create one.
 
-In Highball, go to Settings → Environments → your bottle → Advanced → engine and select:
+In Highball, go to Settings → Environments → your bottle → Advanced → engine and select the FG2X engine matching your source, e.g.:
 
 ```text
-x64-sikarugir10.0_6-r21-fg2x-gptk30
+x64-sikarugir10.0_6-r26-fg2x-gptk30
 ```
 
 Look for FG2X GPTK 3.0 (experimental) in the display name. Keep D3DMetal and DLSS/MetalFX enabled. You need to select the engine yourself; the installer does not switch it for you.
@@ -67,14 +67,14 @@ Repeat these steps with each bottle's directory name. Bottles can share the patc
 ## If setup stops
 
 - **Applications still running:** quit Highball, Steam and Wine, then retry.
-- **No compatible engine:** install the original r21/GPTK 3.0 engine to patch it, or choose `0` to handle only a compatible bottle's NGX. Do not bypass the hash checks.
+- **No compatible engine:** install an original `x64-sikarugir10.0_6-r<N>`/GPTK 3.0 engine with matching bytes to patch it, or choose `0` to handle only a compatible bottle's NGX. Do not bypass the hash checks.
 - **Bottle selection or NGX fails:** the installer keeps any engine it has already created or verified. Fix the reported issue and retry. Choose the source again to verify the engine, or enter `0` to skip that step.
 
 See [CLI.md](CLI.md) for command options, examples and recovery steps.
 
 ## Switch back
 
-Switch every bottle using FG2X back to the original `x64-sikarugir10.0_6-r21` engine. Quit Highball, Steam and Wine. You can then remove the patched engine:
+Switch every bottle using FG2X back to its original engine (e.g. `x64-sikarugir10.0_6-r26`). Quit Highball, Steam and Wine. You can then remove the patched engine (pass `--engine-id` when it is not the default `r21` one):
 
 ```sh
 python3 main.py remove
