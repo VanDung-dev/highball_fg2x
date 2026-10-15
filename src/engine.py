@@ -51,6 +51,14 @@ def source_id_for_engine(engine_id):
     return engine_id[: -len(LEGACY_SUFFIX)]
 
 
+def installed_fg2x_engines():
+    """Names of FG2X engine directories currently installed, oldest revision first."""
+    if not ENGINES.is_dir():
+        return []
+    return sorted(root.name for root in ENGINES.iterdir()
+                  if root.is_dir() and not root.is_symlink() and is_fg2x_engine(root.name))
+
+
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -144,6 +152,9 @@ def verify_engine(root):
             or (root / MODULE).is_symlink()
             or not (root / MODULE).resolve().is_relative_to(root.resolve())):
         raise ValueError("Expected the dedicated FG2X engine directory.")
+    if (not (root / "manifest.json").is_file() or not (root / "fgx2.json").is_file()
+            or not (root / MODULE).is_file()):
+        raise ValueError("FG2X engine " + root.name + " is missing files; nothing was changed.")
     record = json.loads((root / "fgx2.json").read_text())
     manifest = json.loads((root / "manifest.json").read_text())
     data = (root / MODULE).read_bytes()
@@ -176,6 +187,14 @@ def remove(engine_id=ENGINE_ID):
     if not is_fg2x_engine(engine_id):
         raise ValueError("Unknown FG2X engine ID; expected like " + ENGINE_ID + ".")
     root = ENGINES / engine_id
+    if not root.is_dir() or root.is_symlink():
+        installed = installed_fg2x_engines()
+        hint = (" Installed FG2X engine: " + installed[0] + "."
+                if len(installed) == 1 else
+                " Installed FG2X engines: " + ", ".join(installed) + "."
+                if installed else
+                " No FG2X engine is installed.")
+        raise ValueError("No FG2X engine " + engine_id + " is installed; nothing was removed." + hint)
     verify_engine(root)
     source_id = source_id_for_engine(engine_id)
     bottles = ENGINES.parent / "bottles"

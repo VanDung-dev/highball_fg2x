@@ -131,9 +131,9 @@ def main():
     ngx_patcher.add_argument("--bottle", help="Bottle name or path; prompts if omitted")
     ngx_patcher.add_argument("--cache-dir", type=Path, default=bottle.NGX_CACHE)
     remover = commands.add_parser("remove", help="Remove the FG2X engine after all bottles switch back")
-    remover.add_argument("--engine-id", default=engine.ENGINE_ID,
-                         help="Engine to remove, e.g. x64-sikarugir10.0_6-r26-fg2x-gptk30; "
-                              "use the -fg2x legacy ID for a patch installed before the GPTK suffix")
+    remover.add_argument("--engine-id", default=None,
+                         help="Engine to remove; defaults to the installed FG2X engine when only one "
+                              "exists (e.g. x64-sikarugir10.0_6-r26-fg2x-gptk30)")
     args = parser.parse_args()
     repo_dist = Path(__file__).resolve().parents[1] / "dist"
     if args.command == "build":
@@ -197,7 +197,17 @@ def main():
         name = selected.name if selected is not None else "your D3DMetal bottle"
         print(f"\nNext: In Highball, select the engine above for {name}, then enable FG 2X in the game.")
     else:
-        engine.remove(args.engine_id)
+        engine_id = args.engine_id
+        if engine_id is None:
+            installed = engine.installed_fg2x_engines()
+            if len(installed) == 1:
+                engine_id = installed[0]
+            elif not installed:
+                raise ValueError("No FG2X engine is installed; nothing was removed.")
+            else:
+                raise ValueError("Multiple FG2X engines installed (" + ", ".join(installed) +
+                                 "); rerun with --engine-id to choose one.")
+        engine.remove(engine_id)
 
 
 def run():

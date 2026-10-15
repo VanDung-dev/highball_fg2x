@@ -257,15 +257,15 @@ python3 main.py remove [--engine-id ID]
 
 | Option | Required | Default |
 | --- | --- | --- |
-| `--engine-id ID` | No | `x64-sikarugir10.0_6-r21-fg2x-gptk30` |
+| `--engine-id ID` | No | The installed FG2X engine when exactly one exists |
 
-Only FG2X engine IDs of the form `x64-sikarugir10.0_6-r<N>-fg2x-gptk30` (or the `-fg2x` legacy form without the GPTK suffix) are accepted. Arbitrary paths and original engine IDs are not accepted.
+Only FG2X engine IDs of the form `x64-sikarugir10.0_6-r<N>-fg2x-gptk30` (or the `-fg2x` legacy form without the GPTK suffix) are accepted. Arbitrary paths and original engine IDs are not accepted. With several FG2X engines installed, omit `--engine-id` only to see the list in the error; rerun with `--engine-id` to choose one.
 
 ### Steps and examples
 
-1. In Highball, switch every bottle using the engine you want to remove to the original `x64-sikarugir10.0_6-r21` engine or another suitable engine.
+1. In Highball, switch every bottle using the engine you want to remove back to its original engine (e.g. `x64-sikarugir10.0_6-r26`) or another suitable engine.
 2. Quit the game, Steam, Highball and Wine.
-3. Remove the default engine:
+3. Remove the installed FG2X engine (no `--engine-id` needed when it is the only one):
 
 ```sh
 python3 main.py remove
@@ -279,7 +279,7 @@ python3 main.py remove --engine-id x64-sikarugir10.0_6-r21-fg2x
 
 Before deleting the separate engine, the script checks its record, hash and signature, then checks bottle configurations. If a bottle still uses the engine, it stops and tells you which bottle to switch. On success, it prints `Removed only the FG2X engine.`
 
-Removal leaves the original engine, saves, bottle settings and `nvngx.dll` intact. To undo NGX replacement, follow the manual restoration steps above. Running `remove` again after deleting the engine reports a missing-file error.
+Removal leaves the original engine, saves, bottle settings and `nvngx.dll` intact. To undo NGX replacement, follow the manual restoration steps above. Running `remove` with no FG2X engine installed reports that nothing was removed instead of a raw missing-file error.
 
 ## Interactive engine selection and CI
 
@@ -295,12 +295,12 @@ In an interactive terminal, `install` lists source engines first. It creates or 
 | --- | --- |
 | `0` | Success, a skipped step/command, or help output |
 | `1` | An operation or validation error handled by the CLI, usually prefixed with `Stopped:` |
-| `2` | An argparse syntax error: missing command/argument, unknown option or invalid engine ID |
+| `2` | An argparse syntax error: missing command/argument or unknown option |
 
 | Message or situation | Action |
 | --- | --- |
 | `Close Highball, Steam and Wine apps...` | Quit the relevant applications and retry; the CLI does not terminate processes |
-| `No compatible source engines found...` | Install the original r21/GPTK 3.0 engine, or select `0` to skip. Do not edit SHA values to bypass checks |
+| `No compatible source engines found...` | Install an original `x64-sikarugir10.0_6-r<N>`/GPTK 3.0 engine with matching bytes, or select `0` to skip. Do not edit SHA values to bypass checks |
 | `Engine selection requires a terminal...` | Supply `--source-engine PATH` when creating an engine |
 | `Bottle selection requires a terminal...` | Supply `--bottle NAME_OR_PATH` for `patch-ngx` in a noninteractive terminal |
 | `Destination already exists...` | For `build`, choose a new output with the required final directory name |
@@ -308,6 +308,8 @@ In an interactive terminal, `install` lists source engines first. It creates or 
 | `Cached NGX DLL differs...` or an archive checksum/size mismatch | Remove the specific invalid cache file, check connectivity and retry |
 | `FG2X engine differs from its installation record...` | Investigate the modified installation; do not edit the marker or hash to bypass checks |
 | `Switch bottle ... back to ... first.` | Switch the named bottle to another engine before removal |
-| `No such file or directory` | Check the source/bottle path, `bottle.json`, target DLL or engine to remove exists |
+| `No FG2X engine ... is installed...` / `No FG2X engine is installed...` | Nothing was removed. Install an FG2X engine first, or pass `--engine-id` naming the one to remove |
+| `Multiple FG2X engines installed...` | Rerun `remove --engine-id` with one of the listed engines |
+| `No such file or directory` | Check the source/bottle path, `bottle.json` or target DLL exists |
 
 A successful installation confirms that the files passed the CLI's checks. Each game still needs compatible FG integration. After selecting the patched engine, check Metal HUD for interpolation and test gameplay stability; an available 2X menu option alone does not confirm that FG works.
